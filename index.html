@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle HCM Work Pattern Data Transformer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .upload-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+        
+        .upload-section:hover::before {
+            transform: translateX(100%);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .file-input-label {
+            display: inline-block;
+            padding: 15px 40px;
+            background: white;
+            color: #667eea;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .process-btn {
+            margin-top: 20px;
+            padding: 15px 50px;
+            background: white;
+            color: #764ba2;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .process-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .process-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .output-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .output-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 12px 25px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .output-content {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .download-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .download-all-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #48c774 0%, #3ec46d 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(72, 199, 116, 0.4);
+        }
+        
+        .download-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(72, 199, 116, 0.5);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .status {
+            padding: 10px 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-weight: 600;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .info-box h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+        }
+        
+        .file-name {
+            color: white;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Oracle HCM Work Pattern Data Transformer</h1>
+        <p class="subtitle">Transform simple work pattern data into HCM Data Loader format</p>
+        
+        <div class="info-box">
+            <h3>Instructions:</h3>
+            <ul>
+                <li>Upload a CSV file with columns: Person Number, Pattern Name, Mon, Tue, Wed, Thu, Fri, Sat, Sun</li>
+                <li>Hours should be numeric values (e.g., 8 for 8 hours, 0 for day off)</li>
+                <li>The tool will generate 4 HCM Data Loader files: Shifts, Patterns, Schedules, and Assignments</li>
+            </ul>
+        </div>
+        
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <label for="csvFile" class="file-input-label">
+                    📁 Choose CSV File
+                </label>
+                <input type="file" id="csvFile" accept=".csv">
+                <div class="file-name" id="fileName"></div>
+            </div>
+            <br>
+            <button id="processBtn" class="process-btn" disabled>
+                🚀 Transform Data
+            </button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div id="outputSection" class="output-section">
+            <div class="output-tabs">
+                <button class="tab active" data-tab="shifts">Work Shifts</button>
+                <button class="tab" data-tab="patterns">Work Patterns</button>
+                <button class="tab" data-tab="schedules">Work Schedules</button>
+                <button class="tab" data-tab="assignments">Schedule Assignments</button>
+            </div>
+            
+            <div class="output-content">
+                <div id="shiftsContent" class="tab-content"></div>
+                <div id="patternsContent" class="tab-content" style="display:none;"></div>
+                <div id="schedulesContent" class="tab-content" style="display:none;"></div>
+                <div id="assignmentsContent" class="tab-content" style="display:none;"></div>
+            </div>
+            
+            <button id="downloadBtn" class="download-btn">
+                ⬇️ Download Current File
+            </button>
+            
+            <button id="downloadAllBtn" class="download-all-btn">
+                📦 Download All Files as ZIP
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        let currentData = {
+            shifts: [],
+            patterns: [],
+            schedules: [],
+            assignments: []
+        };
+        
+        let currentTab = 'shifts';
+        
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('processBtn').disabled = false;
+            }
+        });
+        
+        document.getElementById('processBtn').addEventListener('click', processFile);
+        
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentTab = this.dataset.tab;
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+                document.getElementById(currentTab + 'Content').style.display = 'block';
+            });
+        });
+        
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            downloadCurrentFile();
+        });
+        
+        document.getElementById('downloadAllBtn').addEventListener('click', function() {
+            downloadAllFiles();
+        });
+        
+        function processFile() {
+            const file = document.getElementById('csvFile').files[0];
+            if (!file) return;
+            
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    try {
+                        transformData(results.data);
+                        showStatus('Data transformed successfully!', 'success');
+                        document.getElementById('outputSection').style.display = 'block';
+                    } catch (error) {
+                        showStatus('Error: ' + error.message, 'error');
+                    }
+                },
+                error: function(error) {
+                    showStatus('Error parsing CSV: ' + error.message, 'error');
+                }
+            });
+        }
+        
+        function transformData(data) {
+            // Clear previous data
+            currentData = {
+                shifts: [],
+                patterns: [],
+                schedules: [],
+                assignments: []
+            };
+            
+            const uniquePatterns = new Map();
+            const uniqueShifts = new Map();
+            
+            // Process each row
+            data.forEach(row => {
+                if (!row['Pattern Name'] || row['Pattern Name'] === 'None - hourly paid') return;
+                
+                const patternName = row['Pattern Name'].trim();
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const hours = days.map(day => parseFloat(row[day] || 0));
+                
+                // Create unique shift identifier
+                const shiftKey = hours.filter(h => h > 0).join('-');
+                
+                // Generate shifts for unique hour values
+                hours.forEach(hour => {
+                    if (hour > 0 && !uniqueShifts.has(hour)) {
+                        uniqueShifts.set(hour, {
+                            Name: `${hour}hrs_shift`,
+                            Description: `${hour} hours shift`,
+                            Code: `SH${hour.toString().replace('.', '')}`,
+                            Type: 'Time',
+                            Category: 'Work From Office',
+                            StartTime: '08:00:00 AM',
+                            Duration: hour,
+                            DurationUnits: 'Hours',
+                            ShiftDetailType: 'None'
+                        });
+                    }
+                });
+                
+                // Create pattern if not exists
+                if (!uniquePatterns.has(patternName)) {
+                    const pattern = {
+                        Name: patternName,
+                        Description: patternName,
+                        Type: 'Time',
+                        LengthInDays: 7
+                    };
+                    
+                    // Add shifts for each day
+                    days.forEach((day, index) => {
+                        if (hours[index] > 0) {
+                            const shiftNum = index + 1;
+                            pattern[`Shift${shiftNum}ShiftName`] = `${hours[index]}hrs_shift`;
+                            pattern[`Shift${shiftNum}Sequence`] = shiftNum;
+                            pattern[`Shift${shiftNum}StartDay`] = index + 1;
+                            pattern[`Shift${shiftNum}EndDay`] = index + 1;
+                        }
+                    });
+                    
+                    uniquePatterns.set(patternName, pattern);
+                    
+                    // Create schedule
+                    currentData.schedules.push({
+                        WorkScheduleName: patternName,
+                        Description: patternName,
+                        Type: 'Time',
+                        EffectiveFromDate: '01-JAN-2024',
+                        EffectiveToDate: '31-DEC-2050',
+                        Pattern1Sequence: 1,
+                        Pattern1PatternName: patternName,
+                        Exception1Type: 'Calendar event category',
+                        Exception1Category: 'Public holiday',
+                        Exception1CalendarEvent: '',
+                        Exception1Name: '',
+                        Exception1Availability: 'Off period'
+                    });
+                }
+                
+                // Create assignment
+                if (row['Person Number']) {
+                    currentData.assignments.push({
+                        METADATA: 'MERGE',
+                        ScheduleAssignment: 'ScheduleAssignment',
+                        ScheduleName: patternName,
+                        StartDate: '01-JAN-2024',
+                        EndDate: '31-DEC-2050',
+                        PrimaryFlag: 'Y',
+                        ResourceType: 'ASSIGN',
+                        AssignmentNumber: `E${row['Person Number']}-1`,
+                        WorkTermsAssignmentNumber: '',
+                        EnterpriseName: '',
+                        LegalEmployerName: '',
+                        LocationSetCode: '',
+                        InternalLocationCode: '',
+                        DepartmentName: '',
+                        JobSetCode: '',
+                        JobCode: '',
+                        BusinessUnitName: '',
+                        PositionCode: '',
+                        SourceSystemId: `SOL_Sample_DM_SDA_E${row['Person Number']}-1`,
+                        SourceSystemOwner: 'HDL'
+                    });
+                }
+            });
+            
+            // Convert maps to arrays
+            currentData.shifts = Array.from(uniqueShifts.values());
+            currentData.patterns = Array.from(uniquePatterns.values());
+            
+            // Display the data
+            displayShifts();
+            displayPatterns();
+            displaySchedules();
+            displayAssignments();
+        }
+        
+        function displayShifts() {
+            const content = document.getElementById('shiftsContent');
+            if (currentData.shifts.length === 0) {
+                content.innerHTML = '<p>No shifts data available</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            Object.keys(currentData.shifts[0]).forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            currentData.shifts.forEach(shift => {
+                html += '<tr>';
+                Object.values(shift).forEach(value => {
+                    html += `<td>${value || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function displayPatterns() {
+            const content = document.getElementById('patternsContent');
+            if (currentData.patterns.length === 0) {
+                content.innerHTML = '<p>No patterns data available</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            // Get all possible keys from all patterns
+            const allKeys = new Set();
+            currentData.patterns.forEach(pattern => {
+                Object.keys(pattern).forEach(key => allKeys.add(key));
+            });
+            
+            allKeys.forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            currentData.patterns.forEach(pattern => {
+                html += '<tr>';
+                allKeys.forEach(key => {
+                    html += `<td>${pattern[key] || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function displaySchedules() {
+            const content = document.getElementById('schedulesContent');
+            if (currentData.schedules.length === 0) {
+                content.innerHTML = '<p>No schedules data available</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            Object.keys(currentData.schedules[0]).forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            currentData.schedules.forEach(schedule => {
+                html += '<tr>';
+                Object.values(schedule).forEach(value => {
+                    html += `<td>${value || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function displayAssignments() {
+            const content = document.getElementById('assignmentsContent');
+            if (currentData.assignments.length === 0) {
+                content.innerHTML = '<p>No assignments data available</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            Object.keys(currentData.assignments[0]).forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            currentData.assignments.forEach(assignment => {
+                html += '<tr>';
+                Object.values(assignment).forEach(value => {
+                    html += `<td>${value || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function downloadCurrentFile() {
+            const data = currentData[currentTab];
+            if (data.length === 0) {
+                showStatus('No data to download', 'error');
+                return;
+            }
+            
+            const csv = Papa.unparse(data);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `work_${currentTab}_${new Date().getTime()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function downloadAllFiles() {
+            if (Object.values(currentData).every(arr => arr.length === 0)) {
+                showStatus('No data to download', 'error');
+                return;
+            }
+            
+            // Download each file individually
+            Object.entries(currentData).forEach(([key, data]) => {
+                if (data.length > 0) {
+                    const csv = Papa.unparse(data);
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `work_${key}_${new Date().getTime()}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            });
+            
+            showStatus('All files downloaded successfully!', 'success');
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
